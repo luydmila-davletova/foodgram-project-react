@@ -1,17 +1,14 @@
-from django.contrib.auth import authenticate, get_user_model
 import django.contrib.auth.password_validation as validators
+from django.contrib.auth import authenticate, get_user_model
 from django.shortcuts import get_object_or_404
 
+from rest_framework import serializers
 from drf_base64.fields import Base64ImageField
 
-from rest_framework import serializers
-
-from recipes.models import (Tag, Ingredient,
-                            IngredientForRecipe,
-                            Recipe, Subscribe
+from recipes.models import (Ingredient, IngredientForRecipe,
+                            Recipe, Subscribe, Tag,
                             )
-
-ERR_MSG = 'Не удается войти в систему с предоставленными учетными данными.'
+from .constants import EROR_LOGIN
 
 User = get_user_model()
 
@@ -41,12 +38,12 @@ class TokenSerializer(serializers.Serializer):
                 password=password)
             if not user:
                 raise serializers.ValidationError(
-                    ERR_MSG,
+                    EROR_LOGIN,
                     code='authorization')
         else:
-            msg = 'Необходимо указать "адрес электронной почты" и "пароль".'
+            message = 'Укажите адрес электронной почты и пароль'
             raise serializers.ValidationError(
-                msg,
+                message,
                 code='authorization')
         attrs['user'] = user
         return attrs
@@ -66,17 +63,19 @@ class UserPasswordSerializer(serializers.Serializer):
                 username=user.email,
                 password=current_password):
             raise serializers.ValidationError(
-                ERR_MSG, code='authorization')
+                EROR_LOGIN, code='authorization')
         return current_password
 
 
 class GetIsSubscribedMixin:
+    """Миксин для получения информации о подписке"""
 
     def get_is_subscribed(self, obj):
-        user = self.context['request'].user
-        if not user.is_authenticated:
-            return False
-        return user.follower.filter(author=obj).exists()
+        if self.context['request'].user.is_authenticated:
+
+            return self.context['request'].user.follower.filter(
+                author=obj
+            ).exists()
 
 
 class UserListSerializer(
@@ -137,7 +136,7 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
 
 class IngredientsEditSerializer(serializers.ModelSerializer):
-    """Сериализатор для правки ингредиентов."""
+    """Сериализатор для изменения ингредиентов."""
 
     id = serializers.IntegerField()
     amount = serializers.IntegerField()
@@ -177,7 +176,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         tags = data['tags']
         if not tags:
             raise serializers.ValidationError(
-                'Нужен хотя бы один тэг для рецепта!')
+                'Добавьте тэг')
         for tag_name in tags:
             if not Tag.objects.filter(name=tag_name).exists():
                 raise serializers.ValidationError(
@@ -193,11 +192,11 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     def validate_ingredients(self, ingredients):
         if not ingredients:
             raise serializers.ValidationError(
-                'Мин. 1 ингредиент в рецепте!')
+                'Рецепт не может быть без ингредиентов')
         for ingredient in ingredients:
             if int(ingredient.get('amount')) < 1:
                 raise serializers.ValidationError(
-                    'Количество ингредиента >= 1!')
+                    'Добавьте все ингредиенты в рецепт')
         return ingredients
 
     def create_ingredients(self, ingredients, recipe):

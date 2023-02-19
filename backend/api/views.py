@@ -16,36 +16,38 @@ from rest_framework.permissions import (SAFE_METHODS, AllowAny,
                                         IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
-from recipes.models import (Tag, Ingredient, Recipe, FavoriteRecipe,
-                            ShoppingCart, IngredientForRecipe, Subscribe)
-from rest_framework.permissions import SAFE_METHODS
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
-from .filters import RecipeFilter
-from .serializers import (TagSerializer, IngredientSerializer,
-                          RecipeReadSerializer, RecipeWriteSerializer,
-                          SubscribeSerializer, UserListSerializer,
-                          TokenSerializer, UserCreateSerializer,
-                          SubscribeRecipeSerializer, UserPasswordSerializer,
-                          )
-
+from recipes.models import (FavoriteRecipe, Ingredient,
+                            IngredientForRecipe,
+                            Recipe, ShoppingCart,
+                            Subscribe, Tag,
+                            )
+from .filters import IngredientFilter, RecipeFilter
+from .mixins import GetObjectMixin, PermissionAndPaginationMixin
+from .serializers import (IngredientSerializer, RecipeReadSerializer,
+                          RecipeWriteSerializer, SubscribeSerializer,
+                          TagSerializer, TokenSerializer, UserCreateSerializer,
+                          UserListSerializer, UserPasswordSerializer)
 
 User = get_user_model()
 
 
-class TagViewSet(viewsets.ModelViewSet):
-    """
-    Вьюсет тегов
-    """
+class TagsViewSet(PermissionAndPaginationMixin,
+                  viewsets.ModelViewSet):
+    """Вьюсет тегов."""
+
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
 
 
-class IngredientsViewSet(viewsets.ModelViewSet):
+class IngredientsViewSet(PermissionAndPaginationMixin,
+                         viewsets.ModelViewSet):
     """Вьсет для списка ингредиентов."""
 
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
+    filterset_class = IngredientFilter
 
 
 class RecipesViewSet(viewsets.ModelViewSet):
@@ -87,8 +89,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
         permission_classes=[IsAuthenticated]
     )
     def download_shopping_cart(self, request):
-        user = request.user
-        if not user.shopping_cart.exists():
+        if not request.user.shopping_cart.exists():
             return Response(status=HTTP_400_BAD_REQUEST)
 
         ingredients = IngredientForRecipe.objects.filter(
@@ -100,7 +101,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
 
         today = datetime.today()
         shopping_list = (
-            f'Список покупок для: {user.get_full_name()}\n\n'
+            f'Список покупок для: {request.user.get_full_name()}\n\n'
             f'Дата: {today:%Y-%m-%d}\n\n'
         )
         shopping_list += '\n'.join([
@@ -111,16 +112,15 @@ class RecipesViewSet(viewsets.ModelViewSet):
         ])
         shopping_list += f'\n\nFoodgram ({today:%Y})'
 
-        filename = f'{user.username}_shopping_list.txt'
+        filename = f'{request.user.username}_shopping_list.txt'
         response = HttpResponse(shopping_list, content_type='text/plain')
         response['Content-Disposition'] = f'attachment; filename={filename}'
 
         return response
 
 
-class AddAndDeleteSubscribe(
-        generics.RetrieveDestroyAPIView,
-        generics.ListCreateAPIView):
+class AddAndDeleteSubscribe(generics.RetrieveDestroyAPIView,
+                            generics.ListCreateAPIView):
     """Подписка и отписка от пользователя."""
 
     serializer_class = SubscribeSerializer
@@ -158,39 +158,9 @@ class AddAndDeleteSubscribe(
         self.request.user.follower.filter(author=instance).delete()
 
 
-class GetObjectMixin:
-    """Миксин для удаления/добавления рецептов избранных/корзины."""
-
-    serializer_class = SubscribeRecipeSerializer
-    permission_classes = (AllowAny,)
-
-    def get_object(self):
-        recipe_id = self.kwargs['recipe_id']
-        recipe = get_object_or_404(Recipe, id=recipe_id)
-        self.check_object_permissions(self.request, recipe)
-        return recipe
-
-
-class AddDeleteFavoriteRecipe(
-        GetObjectMixin,
-        generics.RetrieveDestroyAPIView,
-        generics.ListCreateAPIView):
-    """Добавление и удаление рецепта в/из избранных."""
-
-    def create(self, request, *args, **kwargs):
-        instance = self.get_object()
-        request.user.favorite_recipe.recipe.add(instance)
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def perform_destroy(self, instance):
-        self.request.user.favorite_recipe.recipe.remove(instance)
-
-
-class AddDeleteShoppingCart(
-        GetObjectMixin,
-        generics.RetrieveDestroyAPIView,
-        generics.ListCreateAPIView):
+class AddDeleteShoppingCart(GetObjectMixin,
+                            generics.RetrieveDestroyAPIView,
+                            generics.ListCreateAPIView):
     """Добавление и удаление рецепта в список покупок."""
 
     def create(self, request, *args, **kwargs):
@@ -201,6 +171,21 @@ class AddDeleteShoppingCart(
 
     def perform_destroy(self, instance):
         self.request.user.shopping_cart.recipe.remove(instance)
+
+
+class AddDeleteFavoriteRecipe(GetObjectMixin,
+                              generics.RetrieveDestroyAPIView,
+                              generics.ListCreateAPIView):
+    """Добавление и удаление рецепта в/из избранных."""
+
+    def create(self, request, *args, **kwargs):
+        instance = self.get_object()
+        request.user.favorite_recipe.recipe.add(instance)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_destroy(self, instance):
+        self.request.user.favorite_recipe.recipe.remove(instance)
 
 
 class AuthToken(ObtainAuthToken):
@@ -231,7 +216,7 @@ class UsersViewSet(UserViewSet):
                 self.request.user.follower.filter(
                     author=OuterRef('id'))
             )).prefetch_related(
-                'follower', 'following'
+            'follower', 'following'
         ) if self.request.user.is_authenticated else User.objects.annotate(
             is_subscribed=Value(False))
 
