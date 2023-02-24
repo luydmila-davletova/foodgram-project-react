@@ -1,9 +1,15 @@
+![.github/workflows/foodgram_workflow.yml](https://github.com/luydmila-davletova/foodgram-project-react/actions/workflows/foodgram_workflow.yaml/badge.svg)
 # «FOODGRAM».
  ### Описание
 Foodgram- это веб-приложение, где вы можете делиться своими рецептами и просматривать рецепты других пользователей,
 а так же добавлять их в избранное и корзину покупок.
+
 [Ссылка на развернутый проект](158.160.14.79)
-![.github/workflows/foodgram_workflow.yml](https://github.com/luydmila-davletova/foodgram-project-react/actions/workflows/foodgram_workflow.yaml/badge.svg)
+
+Суперюзер:
+
+- login: user@ya.ru
+- password: user
  ### Технологии
  Python 3.8, DRF 3.12, JWT + Djoser
 ### Запуск проекта 
