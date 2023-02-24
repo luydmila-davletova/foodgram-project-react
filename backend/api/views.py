@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.db.models.aggregates import Count, Sum
@@ -7,16 +5,15 @@ from django.db.models.expressions import Exists, OuterRef, Value
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
-
 from rest_framework import generics, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action, api_view
 from rest_framework.permissions import (SAFE_METHODS, AllowAny,
                                         IsAuthenticated,
-                                        IsAuthenticatedOrReadOnly)
+                                        IsAuthenticatedOrReadOnly,
+                                        )
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from recipes.models import (FavoriteRecipe, Ingredient,
                             IngredientForRecipe,
@@ -28,7 +25,8 @@ from .mixins import GetObjectMixin, PermissionAndPaginationMixin
 from .serializers import (IngredientSerializer, RecipeReadSerializer,
                           RecipeWriteSerializer, SubscribeSerializer,
                           TagSerializer, TokenSerializer, UserCreateSerializer,
-                          UserListSerializer, UserPasswordSerializer)
+                          UserListSerializer, UserPasswordSerializer,
+                          )
 
 User = get_user_model()
 
@@ -84,40 +82,6 @@ class RecipesViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-    @action(
-        detail=False,
-        permission_classes=[IsAuthenticated]
-    )
-    def download_shopping_cart(self, request):
-        if not request.user.shopping_cart.exists():
-            return Response(status=HTTP_400_BAD_REQUEST)
-
-        ingredients = IngredientForRecipe.objects.filter(
-            recipe__shopping_cart__user=request.user
-        ).values(
-            'ingredient__name',
-            'ingredient__measurement_unit'
-        ).annotate(amount=Sum('amount'))
-
-        today = datetime.today()
-        shopping_list = (
-            f'Список покупок для: {request.user.get_full_name()}\n\n'
-            f'Дата: {today:%Y-%m-%d}\n\n'
-        )
-        shopping_list += '\n'.join([
-            f'- {ingredient["ingredient__name"]} '
-            f'({ingredient["ingredient__measurement_unit"]})'
-            f' - {ingredient["amount"]}'
-            for ingredient in ingredients
-        ])
-        shopping_list += f'\n\nFoodgram ({today:%Y})'
-
-        filename = f'{request.user.username}_shopping_list.txt'
-        response = HttpResponse(shopping_list, content_type='text/plain')
-        response['Content-Disposition'] = f'attachment; filename={filename}'
-
-        return response
-
 
 class AddAndDeleteSubscribe(generics.RetrieveDestroyAPIView,
                             generics.ListCreateAPIView):
@@ -171,6 +135,28 @@ class AddDeleteShoppingCart(GetObjectMixin,
 
     def perform_destroy(self, instance):
         self.request.user.shopping_cart.recipe.remove(instance)
+
+
+@api_view(['GET'])
+def download_shopping_cart(request):
+    ingredient_list = "Cписок покупок:"
+    ingredients = IngredientForRecipe.objects.filter(
+        recipe__shopping_cart__user=request.user
+    ).values(
+        'ingredient__name', 'ingredient__measurement_unit'
+    ).annotate(amount=Sum('amount'))
+    for num, i in enumerate(ingredients):
+        ingredient_list += (
+            f"\n{i['ingredient__name']} - "
+            f"{i['amount']} {i['ingredient__measurement_unit']}"
+        )
+        if num < ingredients.count() - 1:
+            ingredient_list += ', '
+    file = 'shopping_list'
+    response = HttpResponse(ingredient_list, 'Content-Type: application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{file}.pdf"'
+
+    return response
 
 
 class AddDeleteFavoriteRecipe(GetObjectMixin,
@@ -253,9 +239,11 @@ def set_password(request):
         context={'request': request})
     if serializer.is_valid():
         serializer.save()
+
         return Response(
             {'message': 'Пароль изменен!'},
             status=status.HTTP_201_CREATED)
+
     return Response(
         {'error': 'Введите верные данные!'},
         status=status.HTTP_400_BAD_REQUEST)

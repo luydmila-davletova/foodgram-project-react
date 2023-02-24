@@ -5,6 +5,7 @@ from .views import (AddAndDeleteSubscribe, AddDeleteFavoriteRecipe,
                     AddDeleteShoppingCart, AuthToken,
                     IngredientsViewSet, RecipesViewSet,
                     TagsViewSet, UsersViewSet, set_password,
+                    download_shopping_cart,
                     )
 
 
@@ -31,6 +32,11 @@ urlpatterns = [
           'recipes/<int:recipe_id>/shopping_cart/',
           AddDeleteShoppingCart.as_view(),
           name='shopping_cart'),
+     path(
+        'recipes/download_shopping_cart/',
+        download_shopping_cart,
+        name='download_shopping_cart'
+     ),
      path('', include(router.urls)),
      path('', include('djoser.urls')),
      path('auth/', include('djoser.urls.authtoken')),

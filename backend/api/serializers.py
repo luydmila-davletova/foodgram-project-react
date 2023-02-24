@@ -1,7 +1,7 @@
 import django.contrib.auth.password_validation as validators
 from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.hashers import make_password
 from django.shortcuts import get_object_or_404
-
 from rest_framework import serializers
 from drf_base64.fields import Base64ImageField
 
@@ -65,6 +65,17 @@ class UserPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 EROR_LOGIN, code='authorization')
         return current_password
+
+    def validate_new_password(self, new_password):
+        validators.validate_password(new_password)
+        return new_password
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        user.password = make_password(
+            validated_data.get('new_password'))
+        user.save()
+        return validated_data
 
 
 class GetIsSubscribedMixin:
@@ -171,7 +182,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
                 Ingredient, id=items['id'])
             if ingredient in ingredient_list:
                 raise serializers.ValidationError(
-                    'Ингредиент должен быть уникальным!')
+                    'Такой ингредиент уже есть в рецепте!')
             ingredient_list.append(ingredient)
         tags = data['tags']
         if not tags:
@@ -186,7 +197,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     def validate_cooking_time(self, cooking_time):
         if int(cooking_time) < 1:
             raise serializers.ValidationError(
-                'Время приготовления >= 1!')
+                'Время приготовления не можеть быть меньше минуты!')
         return cooking_time
 
     def validate_ingredients(self, ingredients):

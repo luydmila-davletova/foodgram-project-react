@@ -1,94 +1,86 @@
 # «FOODGRAM».
  ### Описание
-Foodgram создан для публикации рецептов.
-Авторизованные пользователи могут подписываться на понравившихся авторов, добавлять рецепты в избранное, в покупки, скачать список покупок ингредиентов для добавленных в покупки рецептов.
+Foodgram- это веб-приложение, где вы можете делиться своими рецептами и просматривать рецепты других пользователей,
+а так же добавлять их в избранное и корзину покупок.
+[Ссылка на развернутый проект]()
+
 
  ### Технологии
  Python 3.8, DRF 3.12, JWT + Djoser
- ### Запуск проекта в dev-режиме
+### Запуск проекта 
  - Склонируйте репозиторий.
+ ```bash
+ git clone https://github.com/luydmila-davletova/foodgram-project-react
+ ```
  - Установите и активируйте виртуальное окружение:
  ```bash
  py -3.8 -m venv venv
  venv/Scripts/activate
  python -m pip install --upgrade pip
  ```
- - Устиновите зависимости из файла requirements.txt
+ - Установите зависимости из файла requirements.txt
  ```bash
  pip install -r requirements.txt
  ```
- - Выполните миграции:
+- Создайте .env файл со следующим содержанием:
  ```bash
- python manage.py migrate
+SECRET_KEY = 'твой ключ'
+DB_ENGINE=django.db.backends.postgresql
+DB_NAME=postgres
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=нужно_придумать_пароль
+DB_HOST=db
+DB_PORT=5432
  ```
- Создайте суперпользователя:
+- Установите докер:
+- [Инструкция для Линукс (для других ОС инструкция в документации)](https://docs.docker.com/desktop/install/mac-install/):
  ```bash
- python manage.py createsuperuser
- ```
- Запустите проект:
- ```bash
- python manage.py runserver
- ```
- ### Примеры работы с API для всех пользователей
- Для неавторизованных пользователей работа с API доступна в режиме чтения.
- ```bash
- GET api/recipes/ - получить список всех рецептов.
- При указании параметров limit и offset выдача должна работать с пагинацией
- GET api/recipes/{id}/ - получение рецепта по id
 
- GET api/v1/tags/ - получение списка тегов
- GET api/v1/tags/{id}/ - получение информации о теге  по id
+sudo apt update && sudo apt upgrade -y && sudo apt install curl -y
+sudo curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh && sudo rm get-docker.sh
+sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+sudo systemctl start docker.service && sudo systemctl enable docker.service
+ ```
+Из папок frontend и backend нужно собрать образы и запушить на DockerHub:
+```bash
+docker login
+ ```
+```bash
+cd backend
+ ```
+```bash
+docker build -t davletova1/foodgram_backend:latest .
+ ```
+```bash
+docker push themasterid/foodgram_backend:latest
+ ```
+Сборка закончена, можно взлетать!
+```bash
+docker-compose up -d --build
+ ```
+Далее нужно выполнить миграции, собрать статику и создать суперюзера:
+```bash
+docker-compose exec backend python manage.py makemigrations
+ ```
+```bash
+docker-compose exec backend python manage.py migrate --noinput
+ ```
+```bash
+docker-compose exec backend python manage.py createsuperuser
+ ```
+```bash
+docker-compose exec backend python manage.py collectstatic --no-input
+ ```
+Наполнить БД :
+```bash
+docker-compose exec backend python manage.py import_inr
+docker-compose exec backend python manage.py import_tags
+ ```
+Проект запущен и готов к работе!
 
- GET api/ingredients/ - получение всех ингредиентов
- GET api/ingredients/ - Получение конкетного ингредиента
- ```
- ### Примеры работы с API для авторизованных пользователей
- Для создания публикации используем:
- ```bash
- POST /api/recipe/
- ```
- в body
-{
-  "ingredients": [
-    {
-      "id": 1123,
-      "amount": 10
-    }
-  ],
-  "tags": [
-    1,
-    2
-  ],
-  "image": "картинка",
-  "name": "string",
-  "text": "string",
-  "cooking_time": 1
-}
+### Документация доступна после запуска проекта по адресу:
+http://127.0.0.1/api/docs/
 
-
- ```bash
- GET api/users/subscriptions/ - Возвращает пользователей, на которых подписан текущий пользователь. В выдачу добавляются рецепты.
- ```
- - Авторизованные пользователи могут создавать рецепты,
-добавлять их в избранное.
- - Пользователи могут изменять(удалять) контент, автором которого они являются.
-
-
- ```
- Доступ авторизованным пользователем доступен по JWT-токену (Joser)
- Используется для авторизации по емейлу и паролю, чтобы далее использовать токен при запросах.
- ```bash
- POST api/auth/token/login/
- ```
- Передав в body данные пользователя (например в postman):
- ```bash
-{
-  "password": "string",
-  "email": "string"
-}
- ```
- Полученный токен добавляем в headers (postman), после чего буду доступны все функции проекта:
- ```bash
- Authorization: Token {your_token}
- ```
+Разработка backend : [Давлетова Людмила](https://github.com/luydmila-davletova)
 

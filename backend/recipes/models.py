@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.core import validators
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 User = get_user_model()
 
@@ -167,17 +169,16 @@ class Subscribe(models.Model):
 class FavoriteRecipe(models.Model):
     """Модель избранных рецептов."""
 
-    user = models.ForeignKey(
+    user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
         null=True,
         related_name='favorite_recipe',
         verbose_name='Пользователь',
     )
-    recipe = models.ForeignKey(
+    recipe = models.ManyToManyField(
         Recipe,
-        on_delete=models.CASCADE,
-        related_name='favorites_recipe',
+        related_name='favorite_recipe',
         verbose_name='Рецепт',
     )
     pub_date = models.DateTimeField(
@@ -193,19 +194,25 @@ class FavoriteRecipe(models.Model):
         list_ = [item['name'] for item in self.recipe.values('name')]
         return f'Пользователь {self.user} добавил {list_} в избранные.'
 
+    @receiver(post_save, sender=User)
+    def create_favorite_recipe(
+            sender, instance, created, **kwargs):
+        if created:
+            return FavoriteRecipe.objects.create(user=instance)
+
 
 class ShoppingCart(models.Model):
     """Модель списка покупок."""
 
-    recipe = models.ForeignKey(
+    recipe = models.ManyToManyField(
         Recipe,
-        on_delete=models.CASCADE,
         related_name='shopping_cart',
-        verbose_name='Рецепт для покупки',
+        verbose_name='Покупка',
     )
 
-    user = models.ForeignKey(
+    user = models.OneToOneField(
         User,
+        null=True,
         on_delete=models.CASCADE,
         related_name='shopping_cart',
         verbose_name='Пользователь',
@@ -220,9 +227,13 @@ class ShoppingCart(models.Model):
         verbose_name = 'Cписок покупок'
         verbose_name_plural = 'Списки покупок'
         ordering = ('-pub_date',)
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user', 'recipe'],
-                name='unique_shopping_cart'
-            )
-        ]
+
+    def __str__(self):
+        list_ = [item['name'] for item in self.recipe.values('name')]
+        return f'Пользователь {self.user} добавил {list_} в покупки.'
+
+    @receiver(post_save, sender=User)
+    def create_shopping_cart(
+            sender, instance, created, **kwargs):
+        if created:
+            return ShoppingCart.objects.create(user=instance)
