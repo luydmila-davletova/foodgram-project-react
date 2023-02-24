@@ -102,6 +102,7 @@ class UserListSerializer(
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
+    """Сериализатор для создания Юзера."""
 
     class Meta:
         model = User
