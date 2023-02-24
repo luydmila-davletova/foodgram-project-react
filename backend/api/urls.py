@@ -8,7 +8,6 @@ from .views import (AddAndDeleteSubscribe, AddDeleteFavoriteRecipe,
                     download_shopping_cart,
                     )
 
-
 router = DefaultRouter()
 
 router.register('users', UsersViewSet)
