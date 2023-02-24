@@ -2,9 +2,8 @@
  ### Описание
 Foodgram- это веб-приложение, где вы можете делиться своими рецептами и просматривать рецепты других пользователей,
 а так же добавлять их в избранное и корзину покупок.
-[Ссылка на развернутый проект]()
-
-
+[Ссылка на развернутый проект](158.160.14.79)
+![.github/workflows/foodgram_workflow.yml](https://github.com/luydmila-davletova/foodgram-project-react/actions/workflows/foodgram_workflow.yaml/badge.svg)
  ### Технологии
  Python 3.8, DRF 3.12, JWT + Djoser
 ### Запуск проекта 
