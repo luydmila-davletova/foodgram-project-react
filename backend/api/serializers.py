@@ -66,10 +66,6 @@ class UserPasswordSerializer(serializers.Serializer):
                 EROR_LOGIN, code='authorization')
         return current_password
 
-    def validate_new_password(self, new_password):
-        validators.validate_password(new_password)
-        return new_password
-
     def create(self, validated_data):
         user = self.context['request'].user
         user.password = make_password(
