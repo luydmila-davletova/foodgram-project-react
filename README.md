@@ -58,7 +58,7 @@ cd backend
 docker build -t davletova1/foodgram_backend:latest .
  ```
 ```bash
-docker push themasterid/foodgram_backend:latest
+docker push davletova1/foodgram_backend:latest
  ```
 Сборка закончена, можно взлетать!
 ```bash
